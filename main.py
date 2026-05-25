@@ -2,9 +2,8 @@ import sys
 import argparse
 import csv
 import time
-from dns_query import build_dns_query, send_dns_query, parse_dns_response
+from dns_query import build_dns_query, send_dns_query, parse_dns_response, send_dns_query_dot
 
-# 1. Listas oficiais do enunciado do trabalho (mínimo de 16 servidores e 9 domínios)
 SERVIDORES_DNS = {
     "Sem Filtragem": {
         "Google Public DNS": "8.8.8.8",
@@ -35,26 +34,32 @@ SERVIDORES_DNS = {
     }
 }
 
+SERVIDORES_DOT = {
+    "Google Public DNS": "8.8.8.8",
+    "Cloudflare":        "1.1.1.1",
+    "Quad9":             "9.9.9.9",
+}
+
 DOMINIOS_TESTE = [
-    "www.example.com",     # Controle
-    "www.pucrs.br",        # Controle Regional
-    "internetbadguys.com", # Bloqueado por Segurança
-    "reddit.com",          # Familiar
-    "tinder.com",          # Familiar
-    "polymarket.com",      # Bloqueio Judicial Brasil
-    "youtube.com",             # Adicional 1 (Familiar)
-    "bet365.com",          # Adicional 2 (Potencial de bloqueio/regulação)
-    "piratebay.org"        # Adicional 3 (Bloqueio de pirataria)
+    "www.example.com",
+    "www.pucrs.br",
+    "internetbadguys.com",
+    "reddit.com",
+    "tinder.com",
+    "polymarket.com",
+    "youtube.com",
+    "bet365.com",
+    "piratebay.org"
 ]
 
+# Consulta todos os servidores DNS para um domínio e detecta bloqueios ou anomalias.
 def rodar_auditoria_bloqueio(dominio_alvo):
-    """Executa a verificação em todos os servidores para um domínio específico"""
     print(f"\n========================================================")
     print(f" Executando Auditoria de Bloqueio para: {dominio_alvo}")
     print(f"========================================================")
-    
+
     resultados_dominio = []
-    
+
     for categoria, servidores in SERVIDORES_DNS.items():
         print(f"\n> Categoria: {categoria}")
         for nome, ip in servidores.items():
@@ -62,19 +67,18 @@ def rodar_auditoria_bloqueio(dominio_alvo):
                 query = build_dns_query(dominio_alvo)
                 resposta_bruta = send_dns_query(query, ip)
                 dados = parse_dns_response(resposta_bruta, query)
-                
+
                 status = dados["status"]
                 ips = dados["ips"]
-                
-                # Detecção simples de anomalias na tela
+
                 alerta = ""
                 if status != "OK":
                     alerta = f" [BLOQUEIO DETECTADO: {status}]"
                 elif dominio_alvo == "internetbadguys.com" and "146.112." in "".join(ips):
                     alerta = " [BLOQUEIO OPENDNS: Redirecionado para IP de Aviso]"
-                
+
                 print(f"  [{nome} - {ip}]: Status: {status} | IPs: {ips}{alerta}")
-                
+
                 resultados_dominio.append({
                     "dominio": dominio_alvo,
                     "categoria": categoria,
@@ -83,7 +87,7 @@ def rodar_auditoria_bloqueio(dominio_alvo):
                     "status_rcode": status,
                     "ips_retornados": ", ".join(ips) if ips else "Nenhum"
                 })
-                
+
             except Exception as e:
                 print(f"  [{nome} - {ip}]: FALHA/TIMEOUT de conexão.")
                 resultados_dominio.append({
@@ -94,7 +98,7 @@ def rodar_auditoria_bloqueio(dominio_alvo):
                     "status_rcode": "TIMEOUT",
                     "ips_retornados": "Nenhum"
                 })
-                
+
     return resultados_dominio
 
 def medir_latencia_servidor(nome: str, ip: str, categoria: str,
@@ -206,6 +210,7 @@ def salvar_csv(todos_resultados):
         writer.writerows(todos_resultados)
     print(f"\n[SUCESSO] Todos os dados brutos foram salvos em 'auditoria_bloqueio.csv'!")
 
+# Ponto de entrada: interpreta os argumentos e chama o modo correspondente.
 def main():
     parser = argparse.ArgumentParser(description="Ferramenta de Auditoria DNS - LabRedes PUCRS")
     parser.add_argument("--domain", type=str, help="Domínio customizado para testar fora da lista padrão")
@@ -240,7 +245,7 @@ def main():
         salvar_csv(todos_dados)
 
     else:
-        # ── Modo auditoria completa (padrão) ─────────────────────────────────
+        # ── Modo auditoria completa (padrão) ─────────────────────────────────-
         print("Iniciando auditoria completa de domínios para o relatório técnico...")
         todos_dados = []
         for dom in DOMINIOS_TESTE:
