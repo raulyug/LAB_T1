@@ -245,7 +245,7 @@ def main():
         salvar_csv(todos_dados)
 
     else:
-        # ── Modo auditoria completa (padrão) ─────────────────────────────────
+        # ── Modo auditoria completa (padrão) ─────────────────────────────────-
         print("Iniciando auditoria completa de domínios para o relatório técnico...")
         todos_dados = []
         for dom in DOMINIOS_TESTE:
